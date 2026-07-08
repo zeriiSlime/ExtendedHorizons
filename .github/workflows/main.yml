@@ -36,7 +36,9 @@ jobs:
       - name: Copy MapacheeeLib to libs
         run: |
           mkdir -p libs
-          cp deps/mapacheeelib/build/libs/*-all.jar libs/MapacheeeLib-1.0.1.jar
+          # Ordena los JARs por tamaño (el más grande primero) y copia el correcto
+          FAT_JAR=$(ls -S deps/mapacheeelib/build/libs/*.jar | head -n 1)
+          cp "$FAT_JAR" libs/MapacheeeLib-1.0.1.jar
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
