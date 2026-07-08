@@ -1,5 +1,4 @@
 name: Build ExtendedHorizons
-
 on:
   push:
     branches: [ "v3", "dev" ]
@@ -10,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout ExtendedHorizons
         uses: actions/checkout@v4
@@ -29,11 +27,16 @@ jobs:
           path: deps/mapacheeelib
           token: ${{ secrets.GH_TOKEN || github.token }}
 
-      - name: Publish MapacheeeLib to MavenLocal
+      - name: Build MapacheeeLib ShadowJar
         run: |
           cd deps/mapacheeelib
           chmod +x gradlew
-          ./gradlew publishToMavenLocal --no-daemon
+          ./gradlew shadowJar --no-daemon
+
+      - name: Copy MapacheeeLib to libs
+        run: |
+          mkdir -p libs
+          cp deps/mapacheeelib/build/libs/*-all.jar libs/MapacheeeLib-1.0.1.jar
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
