@@ -27,33 +27,41 @@ jobs:
           path: deps/mapacheeelib
           token: ${{ secrets.GH_TOKEN || github.token }}
 
-      - name: Build MapacheeeLib ShadowJar
+      - name: Build MapacheeeLib ShadowJar (JAR Pesado)
         run: |
           cd deps/mapacheeelib
           chmod +x gradlew
           ./gradlew shadowJar --no-daemon
 
-      - name: Inject Fat JAR into ExtendedHorizons libs
+      - name: Inject Fat JAR into local libs folder
         run: |
           mkdir -p libs
           FAT_JAR=$(ls -S deps/mapacheeelib/build/libs/*.jar | head -n 1)
-          cp "$FAT_JAR" libs/MapacheeeLib-1.0.1.jar
+          cp "$FAT_JAR" libs/MapacheeeLib-local.jar
+          echo "JAR pesado copiado a libs/MapacheeeLib-local.jar"
 
-      - name: Force local jar dependency in build.gradle
+      - name: Auto-detect and Patch Build Script (DSL Agnostic)
         run: |
-          echo "" >> build.gradle
-          echo "dependencies { compileOnly files('libs/MapacheeeLib-1.0.1.jar'); implementation files('libs/MapacheeeLib-1.0.1.jar') }" >> build.gradle
+          PATCH_LINE="dependencies { compileOnly(files(\"libs/MapacheeeLib-local.jar\")); implementation(files(\"libs/MapacheeeLib-local.jar\")) }"
+          if [ -f "build.gradle.kts" ]; then
+            echo "Detectado build.gradle.kts (Kotlin). Parchando..."
+            echo "" >> build.gradle.kts
+            echo "$PATCH_LINE" >> build.gradle.kts
+          else
+            echo "Detectado build.gradle (Groovy). Parchando..."
+            echo "" >> build.gradle
+            echo "$PATCH_LINE" >> build.gradle
+          fi
+
+      - name: Overwrite all Gradle and Maven Caches
+        run: |
+          FAT_JAR=$(ls -S deps/mapacheeelib/build/libs/*.jar | head -n 1)
+          echo "Remplazando cualquier copia ligera remanente en los cachés del sistema..."
+          find ~/.m2/repository -name "*mapacheeelib*.jar" -exec cp -v "$FAT_JAR" {} \; 2>/dev/null || true
+          find ~/.gradle/caches -name "*mapacheeelib*.jar" -exec cp -v "$FAT_JAR" {} \; 2>/dev/null || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
+      - name: Build Plugin
         run: ./gradlew shadowJar --no-daemon
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ExtendedHorizons-Jar
-          path: build/libs/ExtendedHorizons-*.jar
-          retention-days: 7
-          if-no-files-found: error
