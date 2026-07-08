@@ -27,18 +27,25 @@ jobs:
           path: deps/mapacheeelib
           token: ${{ secrets.GH_TOKEN || github.token }}
 
-      - name: Build MapacheeeLib ShadowJar
+      - name: Publish MapacheeeLib to MavenLocal (Estructura inicial)
         run: |
           cd deps/mapacheeelib
           chmod +x gradlew
+          ./gradlew publishToMavenLocal --no-daemon
+
+      - name: Build MapacheeeLib ShadowJar (JAR Pesado)
+        run: |
+          cd deps/mapacheeelib
           ./gradlew shadowJar --no-daemon
 
-      - name: Copy MapacheeeLib to libs
+      - name: Inject ShadowJar into MavenLocal Cache
         run: |
-          mkdir -p libs
-          # Ordena los JARs por tamaño (el más grande primero) y copia el correcto
+          # Detecta el JAR pesado completo que acabamos de compilar
           FAT_JAR=$(ls -S deps/mapacheeelib/build/libs/*.jar | head -n 1)
-          cp "$FAT_JAR" libs/MapacheeeLib-1.0.1.jar
+          echo "Fat JAR detectado en: $FAT_JAR"
+          
+          # Busca el JAR ligero en el repositorio local de Maven y lo reemplaza por el pesado
+          find /home/runner/.m2/repository -iname "*mapacheeelib*.jar" -exec cp -v "$FAT_JAR" {} \;
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
